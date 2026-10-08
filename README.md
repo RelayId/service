@@ -393,7 +393,7 @@ cp .env.example .env
 # Edit .env if your config and secrets live elsewhere.
 ```
 
-`RELAY_CONFIG_FILE` is the host YAML file mounted read-only at `/etc/relay/config.yaml`. `RELAY_SECRETS_DIR` is the host directory mounted read-only at `/etc/relay/secrets`. These variables have no defaults and are not RelayId application configuration. The image is fixed to `ghcr.io/relayid/relayid:latest`. The Compose file publishes port `3000` and the service listens on port `3000`.
+`RELAY_CONFIG_FILE` is the host YAML file mounted read-only at `/etc/relay/config.yaml`. `RELAY_SECRETS_DIR` is the host directory mounted read-only at `/etc/relay/secrets`. These variables have no defaults and are not RelayId application configuration. The image is fixed to `ghcr.io/relayid/service:latest`. The Compose file publishes port `3000` and the service listens on port `3000`.
 
 For a non-Docker server, install the built `relay` binary, keep `config.yaml` and `secrets/` outside the binary directory, and run `relay /absolute/path/to/config.yaml` under a service manager. The process needs read access to the YAML and referenced key files, but no write access to them. Put TLS at the reverse proxy; the Relay container is intended to receive HTTP from that local proxy/network boundary.
 
