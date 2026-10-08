@@ -14,6 +14,7 @@ services:
     volumes:
       - ${RELAY_CONFIG_FILE}:/etc/relay/config.yaml:ro
       - ${RELAY_SECRETS_DIR}:/etc/relay/secrets:ro
+      - ${RELAY_SECRETS_DIR}:${RELAY_SECRETS_DIR}:ro
     healthcheck:
       test: ["CMD", "/relay", "healthcheck", "--url", "http://127.0.0.1:3000/api/status"]
       interval: 10s

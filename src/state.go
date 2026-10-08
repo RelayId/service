@@ -53,6 +53,12 @@ type MobileCode struct {
 	ExpiresAt time.Time
 }
 
+type WatchCapability struct {
+	Token     string
+	Device    *Device
+	ExpiresAt time.Time
+}
+
 type UpstreamState struct {
 	Value        string
 	EnrollmentID string
@@ -63,10 +69,11 @@ type UpstreamState struct {
 }
 
 const (
-	maxActiveEnrollments  = 10000
-	maxActiveLogins       = 10000
-	maxUpstreamStates     = 10000
-	maxMobileCodeAttempts = 5
+	maxActiveEnrollments    = 10000
+	maxActiveLogins         = 10000
+	maxUpstreamStates       = 10000
+	maxMobileCodeAttempts   = 5
+	watchCapabilityLifetime = 30 * 24 * time.Hour
 )
 
 func copyDevice(device *Device) *Device {
@@ -341,6 +348,7 @@ type Store struct {
 	enrollmentState       map[string]*Enrollment
 	authCodes             map[string]*AuthCode
 	mobileCodes           map[string]*MobileCode
+	watchCapabilities     map[string]*WatchCapability
 	upstreamStates        map[string]*UpstreamState
 	replayNonces          map[string]time.Time
 	rateBook              *rateBook
@@ -410,6 +418,7 @@ func newStore(cfg Config) (*Store, error) {
 		enrollmentState:       map[string]*Enrollment{},
 		authCodes:             map[string]*AuthCode{},
 		mobileCodes:           map[string]*MobileCode{},
+		watchCapabilities:     map[string]*WatchCapability{},
 		upstreamStates:        map[string]*UpstreamState{},
 		replayNonces:          map[string]time.Time{},
 		rateBook:              newRateBook(),
@@ -454,6 +463,12 @@ func (s *Store) cleanupExpired() {
 	for code, mobile := range s.mobileCodes {
 		if now.After(mobile.ExpiresAt) {
 			delete(s.mobileCodes, code)
+		}
+	}
+
+	for token, capability := range s.watchCapabilities {
+		if now.After(capability.ExpiresAt) {
+			delete(s.watchCapabilities, token)
 		}
 	}
 

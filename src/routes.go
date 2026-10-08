@@ -126,6 +126,8 @@ func (s *Store) routes(cfg Config) http.Handler {
 	mux.HandleFunc("/api/logins", s.loginHandler(cfg))
 	mux.HandleFunc("/api/logins/", s.loginHandler(cfg))
 	mux.HandleFunc("/api/codes", s.codeHandler(cfg))
+	mux.HandleFunc("/api/watch", s.watchRegistration(cfg))
+	mux.HandleFunc("/api/watch/codes", s.watchCodeHandler(cfg))
 	mux.HandleFunc("/oidc/authorize", s.authorize(cfg))
 	mux.HandleFunc("/oidc/userinfo", s.user(cfg))
 	mux.HandleFunc("/oidc/token", s.token(cfg))
@@ -205,7 +207,7 @@ func logRoute(path string) string {
 
 func noStore(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sensitiveAPI := strings.HasPrefix(r.URL.Path, "/api/enrollments") || strings.HasPrefix(r.URL.Path, "/api/logins") || r.URL.Path == "/api/codes" || strings.HasPrefix(r.URL.Path, "/api/qr/")
+		sensitiveAPI := strings.HasPrefix(r.URL.Path, "/api/enrollments") || strings.HasPrefix(r.URL.Path, "/api/logins") || r.URL.Path == "/api/codes" || strings.HasPrefix(r.URL.Path, "/api/qr/") || strings.HasPrefix(r.URL.Path, "/api/watch")
 		if sensitiveAPI {
 			w.Header().Set("Cache-Control", "no-store")
 			w.Header().Set("Pragma", "no-cache")
