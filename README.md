@@ -305,6 +305,16 @@ openssl ecparam -name prime256v1 -genkey -noout \
 chmod 0600 /srv/relayid/secrets/*.pem
 ```
 
+The production container runs as the unprivileged `nonroot` user (UID/GID `65532`). When these files are bind-mounted into Docker, make them readable by that user while keeping the directory private:
+
+```bash
+sudo chown 65532:65532 /srv/relayid/config.yml /srv/relayid/secrets/*.pem
+sudo chmod 0400 /srv/relayid/config.yml /srv/relayid/secrets/*.pem
+sudo chmod 0750 /srv/relayid/secrets
+```
+
+Recreate the container after changing ownership or modes. Leaving the PEM files owned by `root:root` with mode `0600` causes `permission denied` errors inside the container.
+
 Then use container paths in the YAML, not host paths:
 
 ```yaml
