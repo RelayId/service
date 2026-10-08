@@ -1,0 +1,208 @@
+﻿openapi: 3.0.3
+info:
+  title: RelayId service API
+  version: 1.0.0
+  description: >-
+    RelayId provides device enrollment and browser login endpoints for Relay
+    clients. The Relay base URL is configured and stored by the client during
+    enrollment or account setup. A scanned QR URL is only a transaction
+    reference: the client must compare its scheme, hostname, and effective port
+    with the stored Relay origin, reject a mismatch, never change or auto-add a
+    Relay server from the QR, and never auto-approve a login. Transaction state
+    is short-lived and single-use.
+servers:
+  - url: https://relay.example.com
+paths:
+  /api/status:
+    get:
+      responses: {'200': {description: Public aggregate readiness and process-local activity status, content: {application/json: {schema: {$ref: '#/components/schemas/StatusEnvelope'}}}}}
+  /api/qr/{id}:
+    get:
+      parameters: [{in: path, name: id, required: true, schema: {type: string, maxLength: 128}}]
+      responses: {'200': {description: Login QR image, content: {image/png: {schema: {type: string, format: binary}}}}, '404': {description: Login not found, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '410': {description: Login expired, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}}
+  /api/relay-qr:
+    get:
+      summary: Relay configuration QR image
+      responses: {'200': {description: QR image containing the configured Relay origin, content: {image/png: {schema: {type: string, format: binary}}}}}
+  /api/providers:
+    get:
+      responses: {'200': {description: Providers, content: {application/json: {schema: {$ref: '#/components/schemas/ProviderListEnvelope'}}}}}
+  /api/enrollments:
+    post:
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EnrollmentCreateRequest'}}}}
+      responses: {'201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/EnrollmentCreatedEnvelope'}}}}, '400': {description: Invalid request, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '405': {description: Method not allowed, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '429': {description: Rate limited, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '500': {description: Server error, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}}
+  /api/enrollments/{id}:
+    get:
+      parameters: [{in: path, name: id, required: true, schema: {type: string, maxLength: 128}}]
+      responses: {'200': {description: Enrollment, content: {application/json: {schema: {$ref: '#/components/schemas/EnrollmentStateEnvelope'}}}}, '404': {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '410': {description: Enrollment expired, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}}
+  /api/enrollments/{id}/complete:
+    post:
+      parameters: [{in: path, name: id, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EnrollmentCompleteRequest'}}}}
+      responses: {'200': {description: Credential issued, content: {application/json: {schema: {$ref: '#/components/schemas/EnrollmentCredentialEnvelope'}}}}, '400': {description: Invalid request, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '401': {description: Invalid signature, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '404': {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '409': {description: Enrollment is not ready, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '410': {description: Enrollment expired, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}}
+  /api/enrollments/{id}/oauth2:
+    post:
+      parameters: [{in: path, name: id, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/OAuth2EnrollmentStartRequest'}}}}
+      responses: {'200': {description: Upstream authorization URL, content: {application/json: {schema: {$ref: '#/components/schemas/OAuth2EnrollmentStartEnvelope'}}}}, '400': {description: Invalid provider, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '404': {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '409': {description: Enrollment is no longer pending, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '410': {description: Enrollment expired, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '429': {description: Rate limited, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}}
+  /api/logins/{id}:
+    get:
+      parameters: [{in: path, name: id, required: true, schema: {type: string}}]
+      responses: {'200': {description: Login, content: {application/json: {schema: {$ref: '#/components/schemas/LoginEnvelope'}}}}, '404': {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '410': {description: Login expired, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}}
+  /api/logins/{id}/events:
+    get:
+      parameters: [{in: path, name: id, required: true, schema: {type: string}}]
+      description: Requires the transaction-specific browser cookie; this is not Relay-client authentication.
+      responses: {'200': {description: SSE, content: {text/event-stream: {schema: {type: string}}}}, '404': {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '410': {description: Login expired, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}}
+  /api/logins/{id}/approve:
+    post:
+      security: [{deviceAuth: []}]
+      parameters: [{in: path, name: id, required: true, schema: {type: string}}, {$ref: '#/components/parameters/RelayTimestamp'}, {$ref: '#/components/parameters/RelayNonce'}, {$ref: '#/components/parameters/RelayP256Signature'}, {$ref: '#/components/parameters/RelayMLDSA65Signature'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginApprovalRequest'}}}}
+      responses: {'200': {description: Approved, content: {application/json: {schema: {$ref: '#/components/schemas/LoginStateEnvelope'}}}}, '400': {description: Invalid request, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '401': {description: Invalid device authentication, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '404': {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '409': {description: Login is not pending, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '410': {description: Login expired, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}}
+  /api/logins/{id}/deny:
+    post:
+      security: [{deviceAuth: []}]
+      parameters: [{in: path, name: id, required: true, schema: {type: string}}, {$ref: '#/components/parameters/RelayTimestamp'}, {$ref: '#/components/parameters/RelayNonce'}, {$ref: '#/components/parameters/RelayP256Signature'}, {$ref: '#/components/parameters/RelayMLDSA65Signature'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginApprovalRequest'}}}}
+      responses: {'200': {description: Denied, content: {application/json: {schema: {$ref: '#/components/schemas/LoginStateEnvelope'}}}}, '400': {description: Invalid request, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '401': {description: Invalid device authentication, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '404': {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '409': {description: Login is not pending, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '410': {description: Login expired, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}}
+  /api/logins/{id}/code:
+    post:
+      parameters: [{in: path, name: id, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [code], properties: {code: {type: string}}}}}}
+      description: Requires the transaction-specific browser cookie; this is not Relay-client authentication.
+      responses: {'200': {description: Approved, content: {application/json: {schema: {$ref: '#/components/schemas/LoginStateEnvelope'}}}}, '400': {description: Invalid code, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '401': {description: Missing browser transaction cookie, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '404': {description: Not found, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '409': {description: Login is not pending, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '410': {description: Login expired, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}}
+  /api/codes:
+    post:
+      security: [{deviceAuth: []}]
+      parameters: [{$ref: '#/components/parameters/RelayTimestamp'}, {$ref: '#/components/parameters/RelayNonce'}, {$ref: '#/components/parameters/RelayP256Signature'}, {$ref: '#/components/parameters/RelayMLDSA65Signature'}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, additionalProperties: false}, example: {}}}}
+      responses: {'201': {description: Mobile code, content: {application/json: {schema: {$ref: '#/components/schemas/MobileCodeEnvelope'}}}}, '400': {description: Invalid request, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '401': {description: Invalid device authentication, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '405': {description: Method not allowed, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '429': {description: Rate limited, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}, '500': {description: Server error, content: {application/json: {schema: {$ref: '#/components/schemas/APIError'}}}}}
+  /oidc/authorize:
+    get:
+      responses: {'302': {description: Browser transaction redirect}}
+  /oidc/token:
+    post:
+      requestBody: {required: true, content: {application/x-www-form-urlencoded: {schema: {type: object, required: [grant_type, code, redirect_uri], properties: {grant_type: {type: string, enum: [authorization_code]}, code: {type: string}, client_id: {type: string, description: Required for client_secret_post; omit with Basic auth}, client_secret: {type: string, minLength: 32, description: Required for client_secret_post; omit with Basic auth}, redirect_uri: {type: string, format: uri}, code_verifier: {type: string, minLength: 43, maxLength: 128, pattern: '^[A-Za-z0-9._~-]+$'}}}}}}
+      responses: {'200': {description: OIDC tokens with Cache-Control no-store and Pragma no-cache}, '400': {description: Protocol error}}
+  /oidc/jwks:
+    get: {responses: {'200': {description: JSON Web Key Set}}}
+  /oidc/userinfo:
+    get:
+      security: [{bearerAuth: []}]
+      responses: {'200': {description: UserInfo}}
+    post:
+      security: [{bearerAuth: []}]
+      responses: {'200': {description: UserInfo}}
+components:
+  securitySchemes:
+    deviceAuth: {type: apiKey, in: header, name: Authorization, description: 'RelayDevice opaque AES-256-GCM credential. Also send both P-256 and ML-DSA-65 signatures with the timestamp and nonce headers.'}
+    bearerAuth: {type: http, scheme: bearer}
+  parameters:
+    RelayTimestamp: {name: X-Relay-Timestamp, in: header, required: true, schema: {type: string, pattern: '^[0-9]+$'}, description: Base-10 Unix seconds.}
+    RelayNonce: {name: X-Relay-Nonce, in: header, required: true, schema: {type: string, minLength: 32, maxLength: 32, pattern: '^[A-Za-z0-9_-]{32}$'}, description: RFC 4648 base64url without padding encoding exactly 24 random bytes.}
+    RelayP256Signature: {name: X-Relay-P256-Signature, in: header, required: true, schema: {type: string}, description: Base64url without padding ASN.1 DER P-256 ECDSA/SHA-256 signature over the canonical request.}
+    RelayMLDSA65Signature: {name: X-Relay-MLDSA65-Signature, in: header, required: true, schema: {type: string}, description: Base64url without padding raw FIPS 204 ML-DSA-65 signature over the canonical request using an empty FIPS 204 context; domain separation is in the message prefix.}
+  schemas:
+    Envelope:
+      type: object
+      required: [status]
+      properties:
+        status: {type: integer, description: Actual HTTP status code}
+        data: {type: object}
+        error: {type: string}
+    StatusData:
+      type: object
+      required: [ready, uptime_seconds, active, configured]
+      properties:
+        ready: {type: boolean}
+        uptime_seconds: {type: integer, minimum: 0}
+        active: {type: object, required: [logins, enrollments, authorization_codes, mobile_codes, upstream_transactions], properties: {logins: {type: integer, minimum: 0}, enrollments: {type: integer, minimum: 0}, authorization_codes: {type: integer, minimum: 0}, mobile_codes: {type: integer, minimum: 0}, upstream_transactions: {type: integer, minimum: 0}}}
+        configured: {type: object, required: [oauth2_providers, oidc_relying_parties], properties: {oauth2_providers: {type: integer, minimum: 0}, oidc_relying_parties: {type: integer, minimum: 0}}}
+        system: {type: object, description: Present only when expose_system_stats is enabled and metrics are available. Values describe the Relay process., required: [cpu_percent, memory_used_bytes], properties: {cpu_percent: {type: number, minimum: 0}, memory_used_bytes: {type: integer, format: int64, minimum: 0}}}
+    ProviderListData:
+      type: object
+      required: [providers, mobile_code]
+      properties: {providers: {type: array, items: {$ref: '#/components/schemas/Provider'}}, mobile_code: {type: object, required: [enabled, groups], properties: {enabled: {type: boolean, description: Whether typed browser approval codes are enabled}, groups: {type: integer, minimum: 2, maximum: 4, description: Exact number of four-character groups in generated codes}}}}
+    StatusEnvelope:
+      allOf: [{'$ref': '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/StatusData'}}}]
+    ProviderListEnvelope:
+      allOf: [{'$ref': '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/ProviderListData'}}}]
+    EnrollmentCreatedEnvelope:
+      allOf: [{'$ref': '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/EnrollmentCreatedData'}}}]
+    EnrollmentStateEnvelope:
+      allOf: [{'$ref': '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/EnrollmentResponse'}}}]
+    EnrollmentCredentialEnvelope:
+      allOf: [{'$ref': '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/EnrollmentCredentialData'}}}]
+    OAuth2EnrollmentStartEnvelope:
+      allOf: [{'$ref': '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/OAuth2EnrollmentStartData'}}}]
+    LoginEnvelope:
+      allOf: [{'$ref': '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/Login'}}}]
+    LoginStateEnvelope:
+      allOf: [{'$ref': '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/LoginStateData'}}}]
+    MobileCodeEnvelope:
+      allOf: [{'$ref': '#/components/schemas/Envelope'}, {type: object, properties: {data: {$ref: '#/components/schemas/MobileCode'}}}]
+    EnrollmentCreatedData:
+      type: object
+      required: [id, state, authorization_url, expires_at]
+      properties: {id: {type: string}, state: {type: string, enum: [pending]}, authorization_url: {type: string, format: uri}, expires_at: {type: string, format: date-time}}
+    EnrollmentCredentialData:
+      type: object
+      required: [id, state, credential, email, provider_id, expires_at]
+      properties: {id: {type: string}, state: {type: string, enum: [complete]}, credential: {type: string}, email: {type: string, format: email}, provider_id: {type: string, maxLength: 64}, device_name: {type: string, maxLength: 128}, identity_name: {type: string}, expires_at: {type: string, format: date-time}}
+    OAuth2EnrollmentStartRequest:
+      type: object
+      additionalProperties: false
+      required: [provider_id]
+      properties: {provider_id: {type: string, maxLength: 64}}
+    OAuth2EnrollmentStartData:
+      type: object
+      required: [authorization_url, expires_at]
+      properties: {authorization_url: {type: string, format: uri}, expires_at: {type: string, format: date-time}}
+    LoginStateData:
+      type: object
+      required: [state]
+      properties: {state: {type: string, enum: [approved, denied]}}
+    DeviceJWK:
+      type: object
+      additionalProperties: false
+      required: [kty, crv, x, y]
+      properties: {kty: {type: string, enum: [EC]}, crv: {type: string, enum: [P-256]}, x: {type: string}, y: {type: string}}
+    DeviceKeySet:
+      type: object
+      additionalProperties: false
+      required: [p256, mldsa65]
+      properties: {p256: {$ref: '#/components/schemas/DeviceJWK'}, mldsa65: {type: string, description: Base64url without padding raw FIPS 204 ML-DSA-65 public-key encoding; decoded size is 1952 bytes.}}
+    Provider:
+      type: object
+      required: [id, name, provider, enabled]
+      properties: {id: {type: string, maxLength: 64}, name: {type: string}, provider: {type: string, enum: [custom, discord, github, gitlab, google, linkedin, oidc]}, enabled: {type: boolean, description: Whether this provider is currently available for enrollment}}
+    EnrollmentCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [keys]
+      properties: {device_name: {type: string, minLength: 1, maxLength: 128}, keys: {$ref: '#/components/schemas/DeviceKeySet'}, return_uri: {type: string, maxLength: 2048, description: Optional HTTPS app/universal link or custom-scheme deep link. Relay appends enrollment_id and state after successful provider verification.}}
+    EnrollmentCompleteRequest:
+      type: object
+      additionalProperties: false
+      required: [signatures]
+      properties: {signatures: {type: object, additionalProperties: false, required: [p256, mldsa65], properties: {p256: {type: string, description: Base64url without padding ASN.1 DER P-256 ECDSA/SHA-256 signature over the exact UTF-8 signing_payload.}, mldsa65: {type: string, description: Base64url without padding raw FIPS 204 ML-DSA-65 signature over the exact UTF-8 signing_payload using an empty FIPS 204 context; domain separation is in the payload prefix.}}}}
+    EnrollmentResponse:
+      type: object
+      properties: {id: {type: string}, state: {type: string, enum: [pending, verified, complete, expired]}, email: {type: string, format: email}, signing_payload: {type: string, description: Opaque UTF-8 payload to sign exactly}, expires_at: {type: string, format: date-time}, credential: {type: string, description: Opaque Relay credential}}
+    Login:
+      type: object
+      required: [id, state, client, scope, challenge, expires_at]
+      properties: {id: {type: string}, state: {type: string, enum: [pending, approved, denied, expired, completed]}, client: {type: object, required: [id, name], properties: {id: {type: string}, name: {type: string}}}, scope: {type: string}, challenge: {type: string}, expires_at: {type: string, format: date-time}}
+    LoginApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [challenge]
+      properties: {challenge: {type: string}}
+    MobileCode:
+      type: object
+      properties: {code: {type: string, pattern: '^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4}(-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4}){1,3}$'}, groups: {type: integer, minimum: 2, maximum: 4}, expires_at: {type: string, format: date-time}}
+    APIError:
+      type: object
+      required: [status, error]
+      properties: {status: {type: integer}, error: {type: string}}

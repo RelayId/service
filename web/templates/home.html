@@ -1,0 +1,31 @@
+{{define "content"}}
+<div class="page-heading">
+  <h1 id="page-title">Device access</h1>
+  <p class="lead">RelayId connects your client device to a verified account and lets you approve sign-ins. <br>
+    <span class="lead-links"><a href="/how-it-works">Find out how it works.</a> <a href="#relay-qr" data-open-relay-qr>Connect to this Relay.</a></span></p>
+</div>
+<dialog class="relay-dialog" id="relay-qr" aria-labelledby="relay-dialog-title">
+  <div class="relay-dialog-content">
+    <h2 id="relay-dialog-title">Connect to this Relay</h2>
+    <img class="relay-dialog-qr" src="/api/relay-qr" alt="QR code for this Relay address">
+    <p>Scan this code in the RelayId app to use this address.</p>
+    <div class="dialog-actions"><button class="button button-primary dialog-close" type="button" data-close-relay-qr>Close</button></div>
+  </div>
+</dialog>
+<section id="how-it-works" class="feature-strip" aria-label="How RelayId works">
+  <div class="feature"><span class="feature-number">1.</span>
+    <h2>Start in the client</h2>
+    <p>The RelayId client creates an enrollment and opens its browser page.</p>
+  </div>
+  <div class="feature"><span class="feature-number">2.</span>
+    <h2>Verify your account</h2>
+    <p>Choose the identity provider configured for this RelayId instance.</p>
+  </div>
+  <div class="feature"><span class="feature-number">3.</span>
+    <h2>Approve access</h2>
+    <p>Use the client to approve future sign-ins with a QR code{{if .MobileCodeEnabled}} or short code{{end}}.</p>
+  </div>
+</section>
+<p class="project-link"><a href="https://github.com/RelayId" target="_blank" rel="noopener noreferrer">RelayId on
+    GitHub</a></p>
+{{end}}

@@ -1,0 +1,43 @@
+{{define "content"}}
+<div class="page-heading">
+  <h1 id="page-title">Approve this login <span class="heading-step">(2/2)</span></h1>
+  <p class="lead compact">Use your Relay app to approve this request. Your credentials stay with your identity provider.</p>
+</div>
+<div class="login-layout{{if .MobileCodeEnabled}} login-layout-code{{else}} login-layout-qr-only{{end}}">
+  <div class="qr-column">
+    {{if not .MobileCodeEnabled}}<div class="scan-note"><strong>Scan with the Relay app</strong><small>Approve the request in the app.</small></div>{{end}}
+    <div class="qr-frame">
+      <div class="qr"><img alt="Relay login QR code" src="{{.QRURL}}"></div>
+    </div>
+  </div>
+  {{if .MobileCodeEnabled}}<div class="code-column">
+    <div class="scan-note"><strong>Scan with the Relay app</strong><small>Approve the request in the app.</small></div>
+    <form class="code-form" method="post" action="/login/{{.ID}}/code"><label for="code-1">Enter the one-time code</label>
+      <small class="code-helper">Use the code shown in your Relay app.</small>
+      <div class="code-inputs" data-code-groups="{{.MobileCodeGroups}}" role="group" aria-label="One-time code">
+        <input id="code-1" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 1">
+        <span class="code-separator" data-separator="1" aria-hidden="true">&ndash;</span>
+        <input id="code-2" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 2">
+        <span class="code-separator" data-separator="2" aria-hidden="true">&ndash;</span>
+        <input id="code-3" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 3">
+        <span class="code-separator" data-separator="3" aria-hidden="true">&ndash;</span>
+        <input id="code-4" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 4">
+        <span class="code-separator" data-separator="4" aria-hidden="true">&ndash;</span>
+        <input id="code-5" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 5">
+        <span class="code-separator" data-separator="5" aria-hidden="true">&ndash;</span>
+        <input id="code-6" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 6">
+        <span class="code-separator" data-separator="6" aria-hidden="true">&ndash;</span>
+        <input id="code-7" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 7">
+        <span class="code-separator" data-separator="7" aria-hidden="true">&ndash;</span>
+        <input id="code-8" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 8">
+      </div>
+      <input id="code" name="code" type="hidden" required><button class="button button-primary button-full" type="submit">Continue</button>
+    </form>
+  </div>{{end}}
+</div>
+<p id="login-status" class="status status-message" data-login-id="{{.ID}}" data-expires-at="{{.ExpiresAt}}" data-failure-redirect="{{.FailureRedirect}}"><span class="status-dot"></span><span>Waiting
+    for approval..</span></p>
+{{if .ExpiresAt}}<p class="login-expiry" data-login-expiry></p>{{end}}
+<p class="back-link"><a href="/">Back to RelayId</a></p>
+<script src="/assets/js/login.js?v=20261008-2" defer></script>
+{{end}}

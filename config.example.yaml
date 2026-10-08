@@ -1,0 +1,50 @@
+issuer: https://relay.example.com
+listen: 3000
+
+development: false
+mobile_code:
+  enabled: false
+  groups: 3
+serve_test_pages: false
+expose_system_stats: false
+trust_cloudflare_ip: false
+
+oidc_signing_key_b64: replace-with-relay-keygen-value
+device_credential_key_b64: replace-with-relay-keygen-value
+
+oidc:
+  clients:
+    - id: example-client
+      name: Example relying party
+      secret: replace-with-a-random-secret-of-at-least-32-chars
+      redirect_uris:
+        - https://client.example.com/callback
+      require_pkce: true
+
+oauth2:
+  providers:
+  - id: example-oauth
+    name: Example OAuth2 provider
+    provider: custom
+    namespace: example-production
+    authorization_url: https://accounts.example.com/oauth/authorize
+    token_url: https://accounts.example.com/oauth/token
+    userinfo_url: https://accounts.example.com/oauth/userinfo
+    scopes:
+      - email # The email claim used by Relay.
+      - profile # The display name/profile claim.
+    client_id: replace-with-client-id
+    client_secret: replace-with-client-secret
+
+  - id: example-oidc
+    name: Example OIDC provider
+    provider: oidc
+    issuer: https://login.example.com
+    client_id: replace-with-oidc-client-id
+    client_secret: replace-with-oidc-client-secret
+
+lifetimes:
+  login: 5m # How long a browser login waits for Relay-client approval.
+  enrollment: 10m # How long a new device enrollment may be completed.
+  code: 1m # How long a server-generated mobile login code remains valid.
+  credential: 90d # How long an enrolled device credential remains valid.

@@ -1,0 +1,26 @@
+# Local configuration and secrets
+.env
+config.yaml
+docker-smoke.*
+
+# Runtime state and generated keys
+data/
+secrets/
+*.pem
+*.key
+
+# Go build/test output
+relay
+relay.exe
+*.exe
+bin/
+*.test
+coverage.out
+*.zip
+
+# IDE/editor files
+.idea/
+.vscode/
+*.swp
+
+node_modules/

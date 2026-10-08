@@ -1,0 +1,20 @@
+services:
+  relay:
+    image: ghcr.io/relayid/relayid:latest
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:3000:3000"
+    command: ["/etc/relay/config.yaml"]
+    volumes:
+      - ${RELAY_CONFIG_FILE}:/etc/relay/config.yaml:ro
+      - ${RELAY_SECRETS_DIR}:/etc/relay/secrets:ro
+    healthcheck:
+      test: ["CMD", "/relay", "healthcheck", "--url", "http://127.0.0.1:3000/api/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
