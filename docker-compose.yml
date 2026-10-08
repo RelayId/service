@@ -1,6 +1,7 @@
 services:
   relay:
     image: ghcr.io/relayid/service:latest
+    user: "65532:65532"
     restart: unless-stopped
     read_only: true
     cap_drop:
