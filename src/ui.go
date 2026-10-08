@@ -19,6 +19,7 @@ type pageData struct {
 	State             string
 	DeviceName        string
 	QRURL             string
+	AppURL            string
 	ID                string
 	Providers         []pageProvider
 	Preview           bool
@@ -228,6 +229,7 @@ func (s *Store) testPages(cfg Config) http.Handler {
 			s.renderPage(w, "login", pageData{
 				Title:             "Sign in",
 				QRURL:             "/test/qr",
+				AppURL:            loginQRValue(cfg.Issuer, "preview-login"),
 				ID:                "preview-login",
 				RelyingParty:      "Example relying party",
 				Scopes:            []string{"Sign in", "Email address", "Profile name"},

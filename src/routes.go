@@ -1000,6 +1000,7 @@ func (s *Store) loginPage(cfg Config) http.HandlerFunc {
 		s.renderPage(w, "login", pageData{
 			Title:             "Sign in",
 			QRURL:             "/api/qr/" + urlPath(id),
+			AppURL:            loginQRValue(cfg.Issuer, id),
 			ID:                id,
 			RelyingParty:      oidcClientName(cfg, login.ClientID),
 			Scopes:            humanScopes(login.Scope),

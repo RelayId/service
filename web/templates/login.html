@@ -5,6 +5,8 @@
 </div>
 <div class="login-layout{{if .MobileCodeEnabled}} login-layout-code{{else}} login-layout-qr-only{{end}}">
   <div class="qr-column">
+    <a class="button button-primary" href="{{.AppURL}}">Open in RelayId</a>
+    <small class="scan-note">On a device with RelayId installed, open this login directly in the app.</small>
     {{if not .MobileCodeEnabled}}<div class="scan-note"><strong>Scan with the Relay app</strong><small>Approve the request in the app.</small></div>{{end}}
     <div class="qr-frame">
       <div class="qr"><img alt="Relay login QR code" src="{{.QRURL}}"></div>
