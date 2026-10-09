@@ -1,28 +1,16 @@
 {{define "base"}}
 <!doctype html>
 <html lang="en">
-
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="referrer" content="no-referrer">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
   <title>{{if eq .Title "RelayId"}}RelayId{{else}}{{.Title}} - RelayId{{end}}</title>
-  <link rel="icon" href="/favicon.ico?v=20261008-4" sizes="any" type="image/x-icon">
-  <link rel="shortcut icon" href="/favicon.ico?v=20261008-4" type="image/x-icon">
-  <link rel="stylesheet" href="/assets/css/app.css?v=20261008-4">
-  {{if eq .Title "RelayId"}}<script src="/assets/js/home.js?v=20261008-4" defer></script>{{end}}
+  <link rel="icon" href="/favicon.ico?v=20261009-19" sizes="any" type="image/x-icon">
+  <link rel="stylesheet" href="/assets/css/app.css?v=20261009-23">
+  {{if eq .Title "RelayId"}}<script src="/assets/js/home.js?v=20261009-10" defer></script>{{end}}
 </head>
-
 <body>
-  <header class="site-header">
-    <div class="brand"><img class="brand-logo" src="/assets/assets/logo.svg" alt=""> <a class="brand-link" href="/">RelayId</a></div>
-  </header>
-  <main class="shell">
-    <section class="card" aria-labelledby="page-title">
-      {{template "content" .}}
-    </section>
-  </main>
+  <header class="site-header"><div class="brand"><img class="brand-logo" src="/assets/assets/logo.svg" alt=""><a class="brand-link" href="/" aria-label="RelayId home">RelayId</a></div></header>
+  <main class="shell"><article class="card" aria-labelledby="page-title">{{template "content" .}}</article></main>
 </body>
-
 </html>
 {{end}}

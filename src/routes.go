@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
@@ -498,7 +499,9 @@ func (s *Store) loginHandler(cfg Config) http.HandlerFunc {
 		}
 
 		if !time.Now().Before(login.Expires) && (login.State == "pending" || login.State == "approved") {
-			s.transitionLogin(id, login.State, "expired", nil)
+			if _, err := s.transitionLogin(id, login.State, "expired", nil); err != nil {
+				slog.Debug("login expiration transition raced with another state change", "login_id", id, "error", err)
+			}
 			errOut(w, http.StatusGone, "Login has expired.")
 			return
 		}
@@ -968,7 +971,9 @@ func (s *Store) loginPage(cfg Config) http.HandlerFunc {
 		}
 
 		if !time.Now().Before(login.Expires) && (login.State == "pending" || login.State == "approved") {
-			s.transitionLogin(id, login.State, "expired", nil)
+			if _, err := s.transitionLogin(id, login.State, "expired", nil); err != nil {
+				slog.Debug("login expiration transition raced with another state change", "login_id", id, "error", err)
+			}
 			clearBrowserCookie(w, cfg, id)
 			http.Redirect(w, r, oauthErrorRedirect(login.RedirectURI, login.OAuthState, "access_denied", "The login request expired."), http.StatusFound)
 			return
@@ -1000,7 +1005,7 @@ func (s *Store) loginPage(cfg Config) http.HandlerFunc {
 		s.renderPage(w, "login", pageData{
 			Title:             "Sign in",
 			QRURL:             "/api/qr/" + urlPath(id),
-			AppURL:            loginQRValue(cfg.Issuer, id),
+			AppURL:            template.URL(loginQRValue(cfg.Issuer, id)),
 			ID:                id,
 			RelyingParty:      oidcClientName(cfg, login.ClientID),
 			Scopes:            humanScopes(login.Scope),
@@ -1093,7 +1098,7 @@ func healthcheck(rawURL string) error {
 		return err
 	}
 
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	var envelope struct {
 		Status int `json:"status"`
 		Data   struct {

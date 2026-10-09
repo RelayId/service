@@ -35,6 +35,9 @@ jobs:
       - name: Run vet
         run: go vet ./...
 
+      - name: Run vulnerability scan
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+
       - name: Run tests with race detector
         run: go test -race ./...
 

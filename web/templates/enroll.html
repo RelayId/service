@@ -1,13 +1,13 @@
 {{define "content"}}
-<div class="page-heading">
-  <h1 id="page-title">{{.Heading}}{{if .EnrollmentID}} <span class="heading-step">(1/2)</span>{{end}}</h1>
+<div class="page-heading{{if .EnrollmentID}} page-heading-with-status{{end}}">
+  <h1 id="page-title">{{.Heading}}</h1>
   <p class="lead compact" data-enrollment-message>{{.Message}}</p>
 </div>
-{{if .EnrollmentID}}<div class="status-row" data-enrollment-status data-enrollment-id="{{.EnrollmentID}}"><span class="status-pill"><span class="status-dot status-dot-{{.State}}"></span>
+{{if .EnrollmentID}}<div class="status-row" data-enrollment-status data-enrollment-id="{{.EnrollmentID}}" role="status"><span class="status-pill"><span class="status-dot status-dot-{{.State}}"></span>
     <span data-enrollment-state>{{if eq .State "pending"}}Pending{{else if eq .State "verified"}}Verified{{else if eq .State "complete"}}Complete{{else if eq .State "expired"}}Expired{{else}}{{.State}}{{end}}</span></span><span class="transaction-note" data-enrollment-note>{{if eq .State "complete"}}Enrollment complete. You may now close this window.{{else if eq .State "verified"}}Waiting for the Relay app to finish enrollment..{{else}}Enrollment in progress..{{end}}</span></div>{{end}}
 {{if .EnrollmentID}}<p class="device-name"><strong>Device:</strong> {{.DeviceName}}</p>{{end}}
 {{if and .EnrollmentID (eq .State "pending")}}<p class="enrollment-warning">Continue only if you just started enrollment
-  on this Relay client. <br> Completing this step authorizes that client to authenticate as your identity.</p>{{end}}
+  on this Relay client. Completing this step authorizes that client to authenticate as your identity.</p>{{end}}
 {{if .Providers}}
 <div class="section-label">Choose an identity provider</div>
 <p class="helper">Continue with a configured provider to verify the account for this device.</p>
@@ -16,7 +16,7 @@
     href="{{.URL}}"><span><strong>{{.Name}}</strong><small>Continue with this provider</small></span><span
       class="provider-arrow" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m6 3 5 5-5 5"/></svg></span></a>{{end}}{{end}}</div>
 {{else if and .EnrollmentID (eq .State "pending")}}
-<div class="empty-state"><strong>No provider configured</strong>
+<div class="empty-state" role="status"><strong>No provider configured</strong>
     <p>Ask your RelayId administrator to configure an identity provider before enrolling.</p>
 </div>
 {{end}}

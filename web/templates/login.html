@@ -1,22 +1,28 @@
 {{define "content"}}
-<div class="page-heading">
-  <h1 id="page-title">Approve this login <span class="heading-step">(2/2)</span></h1>
+<div class="page-heading page-heading-with-status">
+  <h1 id="page-title">Approve this login</h1>
   <p class="lead compact">Use your Relay app to approve this request. Your credentials stay with your identity provider.</p>
 </div>
+<p id="login-status" class="status status-message" data-login-id="{{.ID}}" data-expires-at="{{.ExpiresAt}}" data-failure-redirect="{{.FailureRedirect}}"><span class="status-dot"></span><span>Waiting
+    for approval..</span></p>
 <div class="login-layout{{if .MobileCodeEnabled}} login-layout-code{{else}} login-layout-qr-only{{end}}">
-  <div class="qr-column">
-    <a class="button button-primary" href="{{.AppURL}}">Open in RelayId</a>
-    <small class="scan-note">On a device with RelayId installed, open this login directly in the app.</small>
-    {{if not .MobileCodeEnabled}}<div class="scan-note"><strong>Scan with the Relay app</strong><small>Approve the request in the app.</small></div>{{end}}
+  <section class="qr-column" aria-labelledby="qr-heading">
     <div class="qr-frame">
       <div class="qr"><img alt="Relay login QR code" src="{{.QRURL}}"></div>
     </div>
-  </div>
-  {{if .MobileCodeEnabled}}<div class="code-column">
-    <div class="scan-note"><strong>Scan with the Relay app</strong><small>Approve the request in the app.</small></div>
-    <form class="code-form" method="post" action="/login/{{.ID}}/code"><label for="code-1">Enter the one-time code</label>
-      <small class="code-helper">Use the code shown in your Relay app.</small>
-      <div class="code-inputs" data-code-groups="{{.MobileCodeGroups}}" role="group" aria-label="One-time code">
+  </section>
+  {{if .MobileCodeEnabled}}<section class="code-column" aria-label="Alternative sign-in methods">
+    <div class="login-section">
+      <div class="scan-note"><strong id="qr-heading">Scan with the Relay app</strong><small>Approve the request in the app.</small></div>
+    </div>
+    <div class="login-section">
+      <div class="scan-note"><strong>Have RelayId installed?</strong><small><a class="login-app-link" href="{{.AppURL}}">Open this login in the app.</a></small></div>
+    </div>
+    <div class="login-section login-code-section">
+      <form class="code-form" method="post" action="/login/{{.ID}}/code">
+        <label for="code-1">Enter the one-time code</label>
+        <small class="code-helper">Use the code shown in your Relay app.</small>
+        <div class="code-inputs" data-code-groups="{{.MobileCodeGroups}}" role="group" aria-label="One-time code">
         <input id="code-1" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 1">
         <span class="code-separator" data-separator="1" aria-hidden="true">&ndash;</span>
         <input id="code-2" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 2">
@@ -32,14 +38,14 @@
         <input id="code-7" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 7">
         <span class="code-separator" data-separator="7" aria-hidden="true">&ndash;</span>
         <input id="code-8" class="code-input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="4" aria-label="Code group 8">
-      </div>
-      <input id="code" name="code" type="hidden" required><button class="button button-primary button-full" type="submit">Continue</button>
-    </form>
-  </div>{{end}}
+        </div>
+        <input id="code" name="code" type="hidden" required><button class="button button-primary button-full" type="submit">Continue</button>
+        {{if .ExpiresAt}}<p class="login-expiry" data-login-expiry></p>{{end}}
+      </form>
+    </div>
+  </section>{{end}}
 </div>
-<p id="login-status" class="status status-message" data-login-id="{{.ID}}" data-expires-at="{{.ExpiresAt}}" data-failure-redirect="{{.FailureRedirect}}"><span class="status-dot"></span><span>Waiting
-    for approval..</span></p>
-{{if .ExpiresAt}}<p class="login-expiry" data-login-expiry></p>{{end}}
+{{if and .ExpiresAt (not .MobileCodeEnabled)}}<p class="login-expiry" data-login-expiry></p>{{end}}
 <p class="back-link"><a href="/">Back to RelayId</a></p>
 <script src="/assets/js/login.js?v=20261008-2" defer></script>
 {{end}}

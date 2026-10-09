@@ -280,7 +280,7 @@ func loadConfig(file string) (Config, error) {
 				return c, errors.New("production OIDC redirect URIs must use HTTPS")
 			}
 
-			if c.Development && parsed.Scheme != "https" && !(parsed.Scheme == "http" && isLocalHost(parsed.Hostname())) {
+			if c.Development && parsed.Scheme != "https" && (parsed.Scheme != "http" || !isLocalHost(parsed.Hostname())) {
 				return c, errors.New("development HTTP OIDC redirect URIs must use localhost, 127.0.0.1, or ::1")
 			}
 		}
@@ -309,7 +309,7 @@ func validateProviderEndpoint(raw string, development bool) error {
 		return errors.New("OAuth provider endpoints must be absolute URLs without credentials, query, or fragment")
 	}
 
-	if parsed.Scheme != "https" && !(development && parsed.Scheme == "http" && isLocalHost(parsed.Hostname())) {
+	if parsed.Scheme != "https" && (!development || parsed.Scheme != "http" || !isLocalHost(parsed.Hostname())) {
 		return errors.New("OAuth provider endpoints must use HTTPS outside local development")
 	}
 
@@ -366,7 +366,7 @@ func normalizeIssuer(raw string, development bool) (string, error) {
 		return "", errors.New("issuer must not contain a path")
 	}
 
-	if parsed.Scheme != "https" && !(development && parsed.Scheme == "http" && isLocalHost(parsed.Hostname())) {
+	if parsed.Scheme != "https" && (!development || parsed.Scheme != "http" || !isLocalHost(parsed.Hostname())) {
 		return "", errors.New("issuer must use HTTPS outside local development")
 	}
 

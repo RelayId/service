@@ -1,6 +1,6 @@
 module relay
 
-go 1.27.1
+go 1.27.2
 
 require (
 	github.com/JLugagne/egauth v0.15.0
@@ -26,7 +26,7 @@ require (
 	github.com/yeqown/reedsolomon v1.0.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/image v0.45.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 )

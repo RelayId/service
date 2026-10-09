@@ -1,5 +1,10 @@
 .PHONY: fmt format-check test test-race vet staticcheck vuln build clean smoke e2e docker-build docker-smoke check-config ci
 
+# Staticcheck's standalone release currently cannot read Go 1.27 export data.
+# golangci-lint v2.14 embeds the compatible analyzer and keeps this target
+# reproducible on fresh developer machines and CI runners.
+GOLANGCI_LINT_VERSION ?= v2.14.0
+
 ifeq ($(OS),Windows_NT)
 FORMAT_CHECK = powershell -NoProfile -Command "$$files = Get-ChildItem -Path src,web -Filter *.go -Recurse | ForEach-Object FullName; $$formatted = gofmt -l $$files; if ($$formatted) { Write-Error ($$formatted -join [Environment]::NewLine); exit 1 }"
 REMOVE_BUILD_OUTPUT = powershell -NoProfile -Command "$$targets = @('relay', 'relay.exe') + @(Get-ChildItem -File -Filter '*.test' -ErrorAction SilentlyContinue | ForEach-Object FullName); foreach ($$target in $$targets) { if (Test-Path -LiteralPath $$target) { Remove-Item -Force -LiteralPath $$target } }"
@@ -28,10 +33,10 @@ vet:
 	go vet ./...
 
 staticcheck:
-	staticcheck ./...
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run ./...
 
 vuln:
-	govulncheck ./...
+	go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
 
 build:
 	go build -trimpath -o relay ./src

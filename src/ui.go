@@ -19,7 +19,7 @@ type pageData struct {
 	State             string
 	DeviceName        string
 	QRURL             string
-	AppURL            string
+	AppURL            template.URL
 	ID                string
 	Providers         []pageProvider
 	Preview           bool
@@ -29,6 +29,7 @@ type pageData struct {
 	MobileCodeGroups  int
 	ExpiresAt         string
 	FailureRedirect   string
+	RelayURL          template.URL
 }
 
 type pageProvider struct {
@@ -144,7 +145,7 @@ func (s *Store) page(cfg Config) http.HandlerFunc {
 			return
 		}
 
-		s.renderPage(w, "home", pageData{Title: "RelayId", MobileCodeEnabled: cfg.MobileCode.Enabled})
+		s.renderPage(w, "home", pageData{Title: "RelayId", MobileCodeEnabled: cfg.MobileCode.Enabled, RelayURL: template.URL(relayQRValue(cfg.Issuer))})
 	}
 }
 
@@ -209,7 +210,7 @@ func (s *Store) testPages(cfg Config) http.Handler {
 				Message:      message,
 				EnrollmentID: "preview-enrollment",
 				State:        state,
-				DeviceName:   "Example desktop",
+				DeviceName:   "Office laptop",
 				Providers:    providers,
 				Preview:      true,
 			})
@@ -229,7 +230,7 @@ func (s *Store) testPages(cfg Config) http.Handler {
 			s.renderPage(w, "login", pageData{
 				Title:             "Sign in",
 				QRURL:             "/test/qr",
-				AppURL:            loginQRValue(cfg.Issuer, "preview-login"),
+				AppURL:            template.URL(loginQRValue(cfg.Issuer, "preview-login")),
 				ID:                "preview-login",
 				RelyingParty:      "Example relying party",
 				Scopes:            []string{"Sign in", "Email address", "Profile name"},

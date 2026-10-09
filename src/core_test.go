@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -1078,7 +1079,7 @@ func TestSSESurvivesServerWriteTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	reader := bufio.NewReader(response.Body)
 	if _, err := reader.ReadString('\n'); err != nil {
 		t.Fatal(err)
@@ -1378,11 +1379,15 @@ func TestLoginPageRendersWithoutProviderContextClutter(t *testing.T) {
 
 	response := httptest.NewRecorder()
 	store.renderPage(response, "login", pageData{
-		Title:        "Sign in",
-		QRURL:        "/test/qr",
-		ID:           "preview-login",
-		RelyingParty: "<Example relying party>",
-		Scopes:       []string{"Sign in", "Email address"},
+		Title:             "Sign in",
+		QRURL:             "/test/qr",
+		AppURL:            template.URL("relayid://login?origin=https%3A%2F%2Frelay.example.com&id=preview-login"),
+		ID:                "preview-login",
+		RelyingParty:      "<Example relying party>",
+		Scopes:            []string{"Sign in", "Email address"},
+		MobileCodeEnabled: true,
+		MobileCodeGroups:  2,
+		ExpiresAt:         "2030-01-01T00:00:00Z",
 	})
 	body := response.Body.String()
 	for _, expected := range []string{"Sign in", "Scan with the Relay app"} {
@@ -1393,6 +1398,44 @@ func TestLoginPageRendersWithoutProviderContextClutter(t *testing.T) {
 	for _, removed := range []string{"Sign in to:", "Requested access", "Continue only if you initiated this sign-in."} {
 		if strings.Contains(body, removed) {
 			t.Fatalf("login page still contains removed context %q", removed)
+		}
+	}
+	if strings.Contains(body, "ZgotmplZ") || !strings.Contains(body, `href="relayid://login?origin=https%3A%2F%2Frelay.example.com&amp;id=preview-login"`) {
+		t.Fatal("login app link was not rendered as a usable Relay deep link")
+	}
+	if strings.Index(body, "Scan with the Relay app") >= strings.Index(body, "Have RelayId installed?") || strings.Index(body, "Open this login in the app.") >= strings.Index(body, "Enter the one-time code") || strings.Index(body, "Continue") >= strings.Index(body, "data-login-expiry") {
+		t.Fatal("login actions are not rendered in the intended order")
+	}
+}
+
+func TestLoginCodeGroupsRenderAsOneResponsiveGroup(t *testing.T) {
+	store, err := newStore(defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, groups := range []int{2, 3, 4} {
+		response := httptest.NewRecorder()
+		store.renderPage(response, "login", pageData{
+			Title: "Sign in", QRURL: "/test/qr", AppURL: template.URL("relayid://login?id=preview"),
+			ID: "preview", MobileCodeEnabled: true, MobileCodeGroups: groups,
+		})
+		body := response.Body.String()
+		if strings.Contains(body, "ZgotmplZ") || !strings.Contains(body, "relayid://login?id=preview") {
+			t.Fatalf("group %d lost the Relay deep link", groups)
+		}
+		for i := 1; i <= 8; i++ {
+			input := fmt.Sprintf(`id="code-%d"`, i)
+			start := strings.Index(body, input)
+			if start < 0 {
+				t.Fatalf("group %d missing input %d", groups, i)
+			}
+			end := strings.Index(body[start:], ">")
+			if end < 0 {
+				t.Fatalf("group %d input %d is malformed", groups, i)
+			}
+		}
+		if !strings.Contains(body, fmt.Sprintf(`data-code-groups="%d"`, groups)) {
+			t.Fatalf("group %d is missing the responsive group count", groups)
 		}
 	}
 }
@@ -1475,7 +1518,7 @@ func TestHTMLSignalErrorHasCorrectWireContentType(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	if response.StatusCode != http.StatusNotFound || response.Header.Get("Content-Type") != "text/html; charset=utf-8" {
 		t.Fatalf("unexpected wire error response: status=%d content-type=%q", response.StatusCode, response.Header.Get("Content-Type"))
@@ -1823,7 +1866,7 @@ func TestGenericOIDCEnrollmentWithFakeProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer createResponse.Body.Close()
+	defer func() { _ = createResponse.Body.Close() }()
 	var created struct {
 		Data struct {
 			ID string `json:"id"`
@@ -2184,7 +2227,7 @@ func verifyRelayIDTokenWithJWKS(t *testing.T, baseURL, raw, audience, nonce, iss
 		t.Fatal(err)
 	}
 
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	var jwks struct {
 		Keys []map[string]string `json:"keys"`
@@ -2404,7 +2447,7 @@ func TestPublicHTTP(t *testing.T) {
 		t.Fatal(requestErr)
 	}
 
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	var envelope struct {
 		Status int            `json:"status"`
 		Data   map[string]any `json:"data"`
@@ -2862,7 +2905,7 @@ func TestMobileCodePublicFlowAndSingleUse(t *testing.T) {
 		t.Fatal("mobile code was not created through HTTP")
 	}
 
-	response.Body.Close()
+	_ = response.Body.Close()
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{Jar: jar, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
 	authURL := server.URL + "/oidc/authorize?client_id=client&redirect_uri=https%3A%2F%2Fclient.test%2Fcb&response_type=code&scope=openid"
