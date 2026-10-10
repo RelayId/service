@@ -44,7 +44,6 @@ func TestWatchCapabilityIssuesScopedCode(t *testing.T) {
 	registration := httptest.NewRequest(http.MethodPost, "/api/watch", bytes.NewReader([]byte(`{}`)))
 	registration.Header.Set("Content-Type", "application/json")
 	registration.Header.Set("Authorization", "RelayDevice "+credential)
-	signTestRequest(t, registration, p256Key, pqKey)
 	registrationResponse := httptest.NewRecorder()
 	store.watchRegistration(cfg).ServeHTTP(registrationResponse, registration)
 	if registrationResponse.Code != http.StatusCreated {

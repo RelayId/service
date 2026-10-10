@@ -18,7 +18,12 @@ func (s *Store) watchRegistration(cfg Config) http.HandlerFunc {
 			return
 		}
 
-		auth, err := s.authenticate(r, cfg)
+		parts := strings.Fields(r.Header.Get("Authorization"))
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "RelayDevice") || parts[1] == "" {
+			errOut(w, http.StatusUnauthorized, "Device authentication failed.")
+			return
+		}
+		device, err := s.verifyCredential(parts[1], cfg)
 		if err != nil {
 			errOut(w, http.StatusUnauthorized, "Device authentication failed.")
 			return
@@ -37,13 +42,13 @@ func (s *Store) watchRegistration(cfg Config) http.HandlerFunc {
 		}
 
 		expiresAt := time.Now().Add(watchCapabilityLifetime)
-		if auth.Device != nil && auth.Device.Exp.Before(expiresAt) {
-			expiresAt = auth.Device.Exp
+		if device != nil && device.Exp.Before(expiresAt) {
+			expiresAt = device.Exp
 		}
 		s.mu.Lock()
 		s.watchCapabilities[token] = &WatchCapability{
 			Token:     token,
-			Device:    copyDevice(auth.Device),
+			Device:    copyDevice(device),
 			ExpiresAt: expiresAt,
 		}
 		s.mu.Unlock()

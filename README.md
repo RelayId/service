@@ -17,7 +17,7 @@ RelayId is the OIDC provider for the downstream application. The downstream appl
 
 ## Relay Device Protocol
 
-Relay-client authentication uses hybrid classical and post-quantum-resistant authentication. Every enrolled client has a P-256 ECDSA device key and an ML-DSA-65 key. Relay requires both signatures for enrollment completion and every protected `/api` request. Clients should keep the P-256 private key non-exportable in the platform key store and use hardware-backed storage where the platform provides it.
+Relay-client authentication uses hybrid classical and post-quantum-resistant authentication. Every enrolled client has a P-256 ECDSA device key and an ML-DSA-65 key. Relay requires both signatures for enrollment completion and every protected `/api` request, except scoped watch-capability registration, which uses the opaque device credential alone and cannot perform normal device operations. Clients should keep the P-256 private key non-exportable in the platform key store and use hardware-backed storage where the platform provides it.
 
 P-256 is compatible with platform key stores, including hardware-backed implementations where available, and protects the protocol if ML-DSA is ever broken. ML-DSA-65 provides the post-quantum signature component if a future cryptographically relevant quantum attack threatens elliptic-curve signatures. This is not a claim that RelayId is unbreakable or quantum-proof.
 
