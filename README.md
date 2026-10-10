@@ -28,13 +28,13 @@ External OIDC remains ES256 with P-256 JWKS for interoperability with Cloudflare
 ## Quick start
 
 ```bash
-cp .env.example .env
+cp .env.example /srv/relayid/.env
 sudo install -d -m 0750 /srv/relayid/secrets
 cp config.example.yaml /srv/relayid/config.yml
 go run ./src keygen
 # Put the generated values in /srv/relayid/config.yml, or reference files in /srv/relayid/secrets/.
 go run ./src check-config /srv/relayid/config.yml
-docker compose up -d --wait
+docker compose --env-file /srv/relayid/.env -f /srv/relayid/service/docker-compose.yml up -d --wait
 curl --fail https://relay.example.com/api/status
 ```
 
@@ -48,7 +48,8 @@ Keep deployment configuration and secret material outside the source checkout. A
 /srv/relayid/
 ├── .env
 ├── config.yml
-└── secrets/
+├── secrets/
+└── service/       # checked-out RelayId service repository
 ```
 
 Create `/srv/relayid/.env` from `.env.example`:
@@ -69,8 +70,8 @@ Run Compose with the deployment environment file and the checked-out Compose fil
 ```bash
 cp .env.example /srv/relayid/.env
 # Edit /srv/relayid/.env if the deployment paths differ.
-docker compose --env-file /srv/relayid/.env -f /opt/relayid/service/docker-compose.yml up -d --wait
-docker compose --env-file /srv/relayid/.env -f /opt/relayid/service/docker-compose.yml exec -T relay /relay check-config /etc/relay/config.yaml
+docker compose --env-file /srv/relayid/.env -f /srv/relayid/service/docker-compose.yml up -d --wait
+docker compose --env-file /srv/relayid/.env -f /srv/relayid/service/docker-compose.yml exec -T relay /relay check-config /etc/relay/config.yaml
 curl --fail https://relay.example.com/api/status
 curl --fail https://relay.example.com/api/providers
 ```
@@ -371,7 +372,7 @@ go run ./src keygen
 Validate the example or your local YAML with:
 
 ```bash
-cp .env.example .env
+cp .env.example /srv/relayid/.env
 cp config.example.yaml /srv/relayid/config.yml
 # Replace every placeholder, then validate the real local file.
 go run ./src check-config /srv/relayid/config.yml
@@ -389,18 +390,18 @@ The example configuration uses neutral `relay.example.com` and `client.example.c
 The simplest production-like server setup is:
 
 ```bash
-cp .env.example .env
+cp .env.example /srv/relayid/.env
 sudo install -d -m 0750 /srv/relayid/secrets
 cp config.example.yaml /srv/relayid/config.yml
 # edit /srv/relayid/config.yml and replace every example value
-docker compose up -d
+docker compose --env-file /srv/relayid/.env -f /srv/relayid/service/docker-compose.yml up -d --wait
 ```
 
-Compose reads `.env` automatically. Create it from `.env.example` and set the two host paths:
+Create `/srv/relayid/.env` from `.env.example` and set the two host paths:
 
 ```bash
-cp .env.example .env
-# Edit .env if your config and secrets live elsewhere.
+cp .env.example /srv/relayid/.env
+# Edit /srv/relayid/.env if your config and secrets live elsewhere.
 ```
 
 `RELAY_CONFIG_FILE` is the host YAML file mounted read-only at `/etc/relay/config.yaml`. `RELAY_SECRETS_DIR` is the host directory mounted read-only at `/etc/relay/secrets`. These variables have no defaults and are not RelayId application configuration. The image is fixed to `ghcr.io/relayid/service:latest`. The Compose file publishes port `3000` and the service listens on port `3000`.
@@ -411,8 +412,8 @@ Before exposing a new server, validate the exact file that will be mounted:
 
 ```bash
 go run ./src check-config /srv/relayid/config.yml
-docker compose config
-docker compose up -d --wait
+docker compose --env-file /srv/relayid/.env -f /srv/relayid/service/docker-compose.yml config
+docker compose --env-file /srv/relayid/.env -f /srv/relayid/service/docker-compose.yml up -d --wait
 curl https://relay.example.com/api/status
 ```
 
