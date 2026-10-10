@@ -331,7 +331,7 @@ Do not set a `_b64` field and its matching `_file` field together. With Docker b
 | `issuer` | RelayId's public, permanent base URL. It must have no path, query, or fragment; production uses HTTPS. |
 | `listen` | Local bind port/address. The normal value is `3000`, not `:3000`. |
 | `development` | Allows localhost HTTP and development key behavior. Keep `false` in production. |
-| `serve_test_pages` | Serves the public Home and How It Works preview pages. Keep `false` when the browser preview is not needed; transaction pages used by OAuth/OIDC flows remain available. |
+| `serve_test_pages` | Serves the non-functional `/test/*` preview pages with dummy data. The public Home and How It Works pages are always available; keep this `false` in production unless preview routes are needed. |
 | `expose_system_stats` | Adds optional Relay-process CPU percentage and used memory bytes to `/api/status`. It does not expose host totals or maximum memory. Keep `false` unless operators intentionally want this public status data. |
 | `trust_cloudflare_ip` | Uses `CF-Connecting-IP` for rate limiting. Enable only when direct access to RelayId is impossible. |
 | `oidc_signing_key_b64` / `oidc_signing_key_file` | Exactly one source for the downstream OIDC ES256 signing key. |
@@ -351,7 +351,7 @@ Do not set a `_b64` field and its matching `_file` field together. With Docker b
 
 There are no environment overrides for these values. `config.example.yaml` is only the template. Copy it to the host path configured by `RELAY_CONFIG_FILE`, edit that file, and validate that exact file. The `.env` file contains only Docker host paths; it does not override any RelayId setting.
 
-When `serve_test_pages: true`, the service also exposes safe, non-functional browser previews using dummy data:
+When `serve_test_pages: true`, the service exposes safe, non-functional browser previews using dummy data:
 
 ```text
 /test/enroll

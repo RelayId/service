@@ -1363,6 +1363,14 @@ func TestPreviewPagesAreConfigurable(t *testing.T) {
 
 	cfg.ServeTestPages = false
 	handler = store.applicationHandler(cfg)
+	for _, path := range []string{"/", "/how-it-works"} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, nil))
+		if response.Code != http.StatusOK {
+			t.Fatalf("public page %s returned %d with previews disabled", path, response.Code)
+		}
+	}
+
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/test/login", nil))
 	if response.Code != http.StatusNotFound {

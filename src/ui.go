@@ -130,11 +130,6 @@ func clearBrowserCookie(w http.ResponseWriter, cfg Config, id string) {
 
 func (s *Store) page(cfg Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !cfg.ServeTestPages {
-			http.NotFound(w, r)
-			return
-		}
-
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
@@ -151,11 +146,6 @@ func (s *Store) page(cfg Config) http.HandlerFunc {
 
 func (s *Store) howPage(cfg Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !cfg.ServeTestPages {
-			http.NotFound(w, r)
-			return
-		}
-
 		if r.URL.Path != "/how-it-works" {
 			http.NotFound(w, r)
 			return
