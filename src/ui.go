@@ -88,9 +88,9 @@ func (s *Store) enrollmentDetailPage(cfg Config) http.HandlerFunc {
 			return
 		}
 
-		providers := make([]pageProvider, 0, len(cfg.OAuth2.Providers))
+		providers := make([]pageProvider, 0, len(configuredProviders(cfg)))
 		if enrollment.State == "pending" {
-			for _, provider := range cfg.OAuth2.Providers {
+			for _, provider := range configuredProviders(cfg) {
 				providers = append(providers, pageProvider{Name: provider.Name, URL: "/oauth2/" + urlPath(provider.ID) + "?enrollment_id=" + urlQuery(enrollment.ID)})
 			}
 		}
@@ -256,7 +256,7 @@ func (s *Store) demoOIDCPage(_ Config) http.HandlerFunc {
 			return
 		}
 
-		message := "Start a normal RelayId sign-in, then approve it from the RelayId app test mode."
+		message := "Add this Relay to the RelayId app, choose the Demo provider, then approve this sign-in from the app."
 		if r.URL.Query().Get("verified") == "1" {
 			message = "Verified as demo@example.com. The RelayId app completed the sign-in."
 		}

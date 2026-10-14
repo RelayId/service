@@ -25,10 +25,12 @@ var (
 )
 
 func findProvider(cfg Config, id string) *Provider {
-	for index := range cfg.OAuth2.Providers {
-		if cfg.OAuth2.Providers[index].ID == id {
-			return &cfg.OAuth2.Providers[index]
-		}
+	if provider := findConfiguredProvider(cfg.OAuth2.Providers, id); provider != nil {
+		return provider
+	}
+
+	if id == "demo" && cfg.Demo.Enabled {
+		return &Provider{ID: "demo", Name: "Demo", Provider: "demo"}
 	}
 
 	return nil
@@ -55,6 +57,11 @@ func (s *Store) upstream(cfg Config) http.Handler {
 
 		if !s.rateBook.allowWindow("upstream:"+requestIP(r, cfg.TrustCloudflareIP)+":"+provider.ID, time.Second, 6) {
 			s.errorPageWithStatus("Too many authentication attempts.", http.StatusTooManyRequests).ServeHTTP(w, r)
+			return
+		}
+
+		if provider.Provider == "demo" {
+			s.completeDemoEnrollment(cfg, r.URL.Query().Get("enrollment_id"), w, r)
 			return
 		}
 
@@ -91,6 +98,10 @@ func (s *Store) beginOAuth2Enrollment(ctx context.Context, cfg Config, enrollmen
 	provider := findProvider(cfg, providerID)
 	if provider == nil {
 		return "", time.Time{}, errProviderNotFound
+	}
+
+	if provider.Provider == "demo" {
+		return cfg.Issuer + "/oauth2/demo?enrollment_id=" + url.QueryEscape(enrollmentID), now.Add(cfg.Lifetimes.Enrollment), nil
 	}
 
 	upstream, err := s.getUpstreamProvider(ctx, cfg, *provider)
@@ -142,6 +153,52 @@ func (s *Store) beginOAuth2Enrollment(ctx context.Context, cfg Config, enrollmen
 	}
 
 	return authURL, expiresAt, nil
+}
+
+func (s *Store) completeDemoEnrollment(cfg Config, enrollmentID string, w http.ResponseWriter, r *http.Request) {
+	enrollment, ok := s.enrollmentSnapshot(enrollmentID)
+	if !ok {
+		s.errorPageWithStatus("Enrollment not found or expired.", http.StatusNotFound).ServeHTTP(w, r)
+		return
+	}
+
+	now := time.Now()
+	if !now.Before(enrollment.Expires) {
+		s.expireEnrollment(enrollment.ID, now)
+		s.errorPageWithStatus("Enrollment has expired.", http.StatusGone).ServeHTTP(w, r)
+		return
+	}
+
+	if enrollment.State != "pending" {
+		s.errorPageWithStatus("Enrollment is no longer pending.", http.StatusConflict).ServeHTTP(w, r)
+		return
+	}
+
+	device := &Device{
+		Email:             strings.ToLower(cfg.Demo.Email),
+		UpstreamNamespace: "relay:demo",
+		Provider:          "demo",
+		UpstreamSub:       "demo-user",
+		Sub:               hash("relay/device\ndemo\ndemo-user"),
+		IdentityName:      cfg.Demo.Name,
+		DeviceName:        enrollment.Name,
+		PublicKey:         enrollment.PublicKey,
+		MLDSA65PublicKey:  enrollment.MLDSA65PublicKey,
+	}
+	payload, err := enrollmentSigningPayload(&enrollment, device)
+	if err != nil || s.verifyEnrollment(enrollment.ID, device, device.Email, payload, now) != nil {
+		s.errorPageWithStatus("Could not complete demo enrollment.", http.StatusConflict).ServeHTTP(w, r)
+		return
+	}
+
+	if enrollment.ReturnURI != "" {
+		if redirectURI, err := appendEnrollmentReturn(enrollment.ReturnURI, enrollment.ID); err == nil {
+			http.Redirect(w, r, redirectURI, http.StatusFound)
+			return
+		}
+	}
+
+	http.Redirect(w, r, cfg.Issuer+"/enroll/"+url.PathEscape(enrollment.ID), http.StatusFound)
 }
 
 func (s *Store) oauthStartError(err error) http.Handler {

@@ -114,8 +114,8 @@ func (s *Store) routes(cfg Config) http.Handler {
 			return
 		}
 
-		providers := make([]map[string]any, 0, len(cfg.OAuth2.Providers))
-		for _, provider := range cfg.OAuth2.Providers {
+		providers := make([]map[string]any, 0, len(configuredProviders(cfg)))
+		for _, provider := range configuredProviders(cfg) {
 			providers = append(providers, map[string]any{"id": provider.ID, "name": provider.Name, "provider": provider.Provider, "enabled": true})
 		}
 

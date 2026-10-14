@@ -19,6 +19,7 @@ type Config struct {
 	ServeTestPages         bool             `yaml:"serve_test_pages"`
 	ExposeSystemStats      bool             `yaml:"expose_system_stats"`
 	MobileCode             MobileCodeConfig `yaml:"mobile_code"`
+	Demo                   DemoConfig       `yaml:"demo"`
 	TrustCloudflareIP      bool             `yaml:"trust_cloudflare_ip"`
 	OIDCSigningKeyB64      string           `yaml:"oidc_signing_key_b64"`
 	OIDCSigningKeyFile     string           `yaml:"oidc_signing_key_file"`
@@ -36,6 +37,12 @@ type OAuth2Config struct {
 type MobileCodeConfig struct {
 	Enabled bool `yaml:"enabled"`
 	Groups  int  `yaml:"groups"`
+}
+
+type DemoConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Email   string `yaml:"email"`
+	Name    string `yaml:"name"`
 }
 
 type OIDCConfig struct {
@@ -134,6 +141,10 @@ func defaults() Config {
 		ServeTestPages: true,
 		MobileCode: MobileCodeConfig{
 			Groups: 3,
+		},
+		Demo: DemoConfig{
+			Email: "demo@example.com",
+			Name:  "Demo User",
 		},
 		Lifetimes: Lifetimes{
 			Login:      5 * time.Minute,
@@ -298,10 +309,45 @@ func loadConfig(file string) (Config, error) {
 		return c, errors.New("mobile_code.groups must be between 2 and 4")
 	}
 
+	if c.Demo.Enabled {
+		email := strings.TrimSpace(c.Demo.Email)
+		at := strings.LastIndexByte(email, '@')
+		if at <= 0 || at == len(email)-1 || len([]byte(email)) > 320 {
+			return c, errors.New("demo.email must be a valid email address")
+		}
+
+		if strings.TrimSpace(c.Demo.Name) == "" || len([]byte(c.Demo.Name)) > 256 {
+			return c, errors.New("demo.name must be between 1 and 256 bytes")
+		}
+
+		if findConfiguredProvider(c.OAuth2.Providers, "demo") != nil {
+			return c, errors.New("demo provider ID is reserved")
+		}
+	}
+
 	return c, nil
 }
 
 var providerIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+
+func findConfiguredProvider(providers []Provider, id string) *Provider {
+	for index := range providers {
+		if providers[index].ID == id {
+			return &providers[index]
+		}
+	}
+
+	return nil
+}
+
+func configuredProviders(cfg Config) []Provider {
+	providers := append([]Provider(nil), cfg.OAuth2.Providers...)
+	if cfg.Demo.Enabled {
+		providers = append(providers, Provider{ID: "demo", Name: "Demo", Provider: "demo"})
+	}
+
+	return providers
+}
 
 func validateProviderEndpoint(raw string, development bool) error {
 	parsed, err := url.Parse(raw)

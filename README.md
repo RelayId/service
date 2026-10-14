@@ -119,6 +119,17 @@ oauth2:
 
 Generic custom OAuth2 requires an explicit stable `namespace`, `authorization_url`, `token_url`, and `userinfo_url`. Its optional `scopes` are the only upstream scopes configured by Relay. The user-info response must include a stable subject, an email, and `email_verified: true`; otherwise enrollment is rejected. Never change a namespace after users have enrolled.
 
+For review or demonstrations, Relay can expose a local Demo provider without contacting an upstream identity service:
+
+```yaml
+demo:
+  enabled: true
+  email: demo@example.com
+  name: Demo User
+```
+
+The Demo provider appears alongside configured providers during enrollment. Choosing it completes enrollment locally with the configured email and name; it does not create an upstream OAuth transaction. This is an explicit provider selection, not a hidden app gesture. Keep it disabled on deployments that should accept only real upstream identities.
+
 Every upstream callback is Relay-owned:
 
 ```text
@@ -347,6 +358,8 @@ Do not set a `_b64` field and its matching `_file` field together. With Docker b
 | `oauth2.providers[].issuer` | Required only for generic upstream `oidc`; it is the discovery issuer. |
 | `oauth2.providers[].namespace` | Required only for `custom`; keep it stable because it affects user subjects. |
 | `authorization_url`, `token_url`, `userinfo_url`, `scopes` | Used only by `custom`; presets and generic `oidc` do not accept these fields. |
+| `demo.enabled` | Adds the local Demo provider to enrollment. It bypasses upstream OAuth and should be enabled only on installations intended for review or demonstrations. |
+| `demo.email` / `demo.name` | The verified local identity returned by the Demo provider. |
 | `lifetimes.*` | Login, enrollment, mobile-code, and device-credential durations. |
 
 There are no environment overrides for these values. `config.example.yaml` is only the template. Copy it to the host path configured by `RELAY_CONFIG_FILE`, edit that file, and validate that exact file. The `.env` file contains only Docker host paths; it does not override any RelayId setting.

@@ -5,6 +5,13 @@ development: false
 mobile_code:
   enabled: false
   groups: 3
+
+# Optional local identity for review and demonstration. It never contacts an upstream provider.
+demo:
+  enabled: false
+  email: demo@example.com
+  name: Demo User
+
 serve_test_pages: false
 expose_system_stats: false
 trust_cloudflare_ip: false
