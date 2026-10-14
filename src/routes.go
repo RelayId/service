@@ -33,6 +33,12 @@ func (s *Store) routes(cfg Config) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/assets/", assetsHandler())
 	mux.Handle("/test/", s.testPages(cfg))
+	mux.Handle("/test/api/", s.testAPI(cfg))
+	mux.HandleFunc("/oidc", s.demoOIDCPage(cfg))
+	mux.HandleFunc("/oidc/demo/start", s.demoOIDCStart(cfg))
+	mux.HandleFunc("/oidc/demo/callback", s.demoOIDCCallback(cfg))
+	mux.HandleFunc("/oidc/demo/reset", s.demoOIDCReset(cfg))
+	mux.Handle("/oidc/demo/", s.testAPI(cfg))
 	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			errOut(w, http.StatusMethodNotAllowed, "Method not allowed.")
@@ -214,7 +220,7 @@ func noStore(next http.Handler) http.Handler {
 			w.Header().Set("Pragma", "no-cache")
 		}
 
-		if r.URL.Path == "/" || strings.HasPrefix(r.URL.Path, "/login") || strings.HasPrefix(r.URL.Path, "/enroll") || strings.HasPrefix(r.URL.Path, "/oauth2") || strings.HasPrefix(r.URL.Path, "/error") || strings.HasPrefix(r.URL.Path, "/oidc/authorize") {
+		if r.URL.Path == "/" || strings.HasPrefix(r.URL.Path, "/login") || strings.HasPrefix(r.URL.Path, "/enroll") || strings.HasPrefix(r.URL.Path, "/oauth2") || strings.HasPrefix(r.URL.Path, "/error") || strings.HasPrefix(r.URL.Path, "/oidc") {
 			w.Header().Set("Cache-Control", "no-store")
 			w.Header().Set("X-Robots-Tag", "noindex, nofollow")
 		}
@@ -227,7 +233,7 @@ func securityHeaders(next http.Handler, cfg Config) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-		if strings.HasPrefix(r.URL.Path, "/login") || strings.HasPrefix(r.URL.Path, "/enroll") || strings.HasPrefix(r.URL.Path, "/oauth2") || strings.HasPrefix(r.URL.Path, "/error") || strings.HasPrefix(r.URL.Path, "/oidc/authorize") || r.URL.Path == "/" {
+		if strings.HasPrefix(r.URL.Path, "/login") || strings.HasPrefix(r.URL.Path, "/enroll") || strings.HasPrefix(r.URL.Path, "/oauth2") || strings.HasPrefix(r.URL.Path, "/error") || strings.HasPrefix(r.URL.Path, "/oidc") || r.URL.Path == "/" {
 			w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 		}
 
@@ -654,6 +660,9 @@ func (s *Store) authorize(cfg Config) http.HandlerFunc {
 		}
 
 		client := findOIDCClient(cfg, q.Get("client_id"))
+		if client == nil {
+			client = demoOIDCClient(cfg, q.Get("client_id"), q.Get("redirect_uri"))
+		}
 		if client == nil || !contains(client.RedirectURIs, q.Get("redirect_uri")) {
 			http.Error(w, "invalid client or redirect_uri", http.StatusBadRequest)
 			return
@@ -733,6 +742,11 @@ func (s *Store) authorize(cfg Config) http.HandlerFunc {
 
 		s.loginState[id] = login
 		s.mu.Unlock()
+		if client.ID == demoOIDCClientID {
+			s.testDemoMu.Lock()
+			s.testDemoLoginID = id
+			s.testDemoMu.Unlock()
+		}
 
 		http.SetCookie(w, &http.Cookie{Name: browserCookiePrefix + id, Value: browser, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(cfg.Issuer, "https://"), SameSite: http.SameSiteLaxMode, MaxAge: int(cfg.Lifetimes.Login / time.Second)})
 		http.Redirect(w, r, cfg.Issuer+"/login/"+id, http.StatusFound)
@@ -842,6 +856,9 @@ func (s *Store) token(cfg Config) http.HandlerFunc {
 		}
 
 		client := findOIDCClient(cfg, clientID)
+		if client == nil {
+			client = demoOIDCClient(cfg, clientID, r.PostForm.Get("redirect_uri"))
+		}
 		if client == nil || !equalSecret(client.Secret, secret) {
 			if basicHeader {
 				w.Header().Set("WWW-Authenticate", `Basic realm="relay"`)
@@ -958,12 +975,19 @@ func (s *Store) user(cfg Config) http.HandlerFunc {
 
 func clientIDClaimConfigured(cfg Config, value any) bool {
 	id, ok := value.(string)
-	return ok && findOIDCClient(cfg, id) != nil
+	return ok && (findOIDCClient(cfg, id) != nil || demoOIDCClient(cfg, id, strings.TrimSuffix(cfg.Issuer, "/")+"/oidc/demo/callback") != nil)
 }
 
 func (s *Store) loginPage(cfg Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/login/")
+		if id == "test-login" {
+			s.testDemoMu.Lock()
+			if s.testDemoLoginID != "" {
+				id = s.testDemoLoginID
+			}
+			s.testDemoMu.Unlock()
+		}
 		login, ok := s.loginSnapshot(id)
 		if !ok || !browserBound(r, &login) {
 			http.Error(w, "not found", http.StatusNotFound)

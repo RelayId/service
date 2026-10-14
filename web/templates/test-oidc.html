@@ -1,0 +1,31 @@
+{{define "content"}}
+<header class="page-heading page-heading-with-status">
+  <h1 id="page-title">{{.Heading}}</h1>
+  <p class="lead">{{.Message}}</p>
+</header>
+
+{{if eq .Message "Verified as demo@example.com. The RelayId app completed the sign-in."}}
+<div class="status-row" role="status"><span class="status-pill"><span class="status-dot status-dot-complete"></span>Complete</span><span class="transaction-note">Demo sign-in returned to this client.</span></div>
+{{else}}
+<div class="status-row" role="status"><span class="status-pill"><span class="status-dot status-dot-pending"></span>Not started</span><span class="transaction-note">Start a demo sign-in to connect the app.</span></div>
+{{end}}
+
+<section class="test-panel" aria-labelledby="test-sign-in-title">
+  <h2 id="test-sign-in-title">Test the RelayId app</h2>
+  <p class="helper">Start a real RelayId sign-in, then approve it from RelayId test mode. On the phone, tap the RelayId logo five times on Home. On the watch, tap the RelayId header five times.</p>
+  <div class="test-actions">
+    <a class="button button-primary" href="/oidc/demo/start">Start demo sign-in</a>
+    <a class="button button-secondary" href="/oidc/demo/reset">Reset demo</a>
+  </div>
+</section>
+
+<section class="test-panel" aria-labelledby="test-code-title">
+  <h2 id="test-code-title">Approve with a one-time code</h2>
+  <p class="helper">After starting the sign-in, generate a code in the app and enter it on the RelayId login page.</p>
+</section>
+
+{{if eq .Message "Verified as demo@example.com. The RelayId app completed the sign-in."}}
+<p class="status-message" role="status">Signed in as <strong>demo@example.com</strong>.</p>
+{{end}}
+<p class="back-link"><a href="/">Back to RelayId</a></p>
+{{end}}

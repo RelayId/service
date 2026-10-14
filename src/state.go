@@ -358,6 +358,8 @@ type Store struct {
 	deviceCredentialKey   []byte
 	oidc                  *ecdsa.PrivateKey
 	upstreamProviderSlots map[string]*upstreamProviderSlot
+	testDemoMu            sync.Mutex
+	testDemoLoginID       string
 }
 
 func (s *Store) currentSystemStatus() *systemStatus {

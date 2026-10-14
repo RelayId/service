@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"html/template"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -39,11 +41,12 @@ type pageProvider struct {
 }
 
 var pageTemplates = map[string]*template.Template{
-	"home":   template.Must(template.ParseFS(relayweb.Files, "templates/base.html", "templates/home.html")),
-	"how":    template.Must(template.ParseFS(relayweb.Files, "templates/base.html", "templates/how.html")),
-	"login":  template.Must(template.ParseFS(relayweb.Files, "templates/base.html", "templates/login.html")),
-	"enroll": template.Must(template.ParseFS(relayweb.Files, "templates/base.html", "templates/enroll.html")),
-	"error":  template.Must(template.ParseFS(relayweb.Files, "templates/base.html", "templates/error.html")),
+	"home":      template.Must(template.ParseFS(relayweb.Files, "templates/base.html", "templates/home.html")),
+	"how":       template.Must(template.ParseFS(relayweb.Files, "templates/base.html", "templates/how.html")),
+	"login":     template.Must(template.ParseFS(relayweb.Files, "templates/base.html", "templates/login.html")),
+	"enroll":    template.Must(template.ParseFS(relayweb.Files, "templates/base.html", "templates/enroll.html")),
+	"error":     template.Must(template.ParseFS(relayweb.Files, "templates/base.html", "templates/error.html")),
+	"test-oidc": template.Must(template.ParseFS(relayweb.Files, "templates/base.html", "templates/test-oidc.html")),
 }
 
 func (s *Store) renderPage(w http.ResponseWriter, name string, data pageData) {
@@ -227,6 +230,8 @@ func (s *Store) testPages(cfg Config) http.Handler {
 				MobileCodeEnabled: mobileCodeEnabled,
 				MobileCodeGroups:  mobileCodeGroups,
 			})
+		case "/test/oidc":
+			s.demoOIDCPage(cfg).ServeHTTP(w, r)
 		case "/test/error":
 			s.errorPageWithStatus("This is an example error page.", http.StatusBadRequest).ServeHTTP(w, r)
 		case "/test/qr":
@@ -242,6 +247,141 @@ func (s *Store) testPages(cfg Config) http.Handler {
 			http.NotFound(w, r)
 		}
 	})
+}
+
+func (s *Store) demoOIDCPage(_ Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || (r.URL.Path != "/oidc" && r.URL.Path != "/test/oidc") {
+			http.NotFound(w, r)
+			return
+		}
+
+		message := "Start a normal RelayId sign-in, then approve it from the RelayId app test mode."
+		if r.URL.Query().Get("verified") == "1" {
+			message = "Verified as demo@example.com. The RelayId app completed the sign-in."
+		}
+		s.renderPage(w, "test-oidc", pageData{Title: "RelayId demo", Heading: "RelayId demo client", Message: message, ID: "test-login", RelyingParty: "RelayId demo client"})
+	}
+}
+
+const demoOIDCClientID = "relayid-demo-client"
+
+func demoOIDCClient(cfg Config, clientID, redirectURI string) *OIDCClient {
+	expectedRedirect := strings.TrimSuffix(cfg.Issuer, "/") + "/oidc/demo/callback"
+	if clientID != demoOIDCClientID || redirectURI != expectedRedirect {
+		return nil
+	}
+
+	return &OIDCClient{ID: demoOIDCClientID, Name: "RelayId demo client", Secret: "relayid-demo-client-secret", RedirectURIs: []string{expectedRedirect}}
+}
+
+func (s *Store) demoOIDCStart(cfg Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			errOut(w, http.StatusMethodNotAllowed, "Method not allowed.")
+			return
+		}
+
+		query := url.Values{
+			"client_id":             {demoOIDCClientID},
+			"redirect_uri":          {strings.TrimSuffix(cfg.Issuer, "/") + "/oidc/demo/callback"},
+			"response_type":         {"code"},
+			"scope":                 {"openid email profile"},
+			"state":                 {"demo-state"},
+			"nonce":                 {"demo-nonce"},
+			"code_challenge_method": {"S256"},
+		}
+		verifier, err := randomToken(32)
+		if err != nil {
+			errOut(w, http.StatusInternalServerError, "Could not start demo sign-in.")
+			return
+		}
+		query.Set("code_challenge", pkceS256(verifier))
+		query.Set("state", verifier)
+
+		url := "/oidc/authorize?" + query.Encode()
+		// The demo callback receives the verifier through the browser session, not the URL.
+		http.SetCookie(w, &http.Cookie{Name: "relay_demo_verifier", Value: verifier, Path: "/oidc", HttpOnly: true, Secure: strings.HasPrefix(cfg.Issuer, "https://"), SameSite: http.SameSiteLaxMode, MaxAge: int(oidcAuthorizationCodeLifetime / time.Second)})
+		http.Redirect(w, r, url, http.StatusFound)
+	}
+}
+
+func (s *Store) demoOIDCCallback(cfg Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			errOut(w, http.StatusMethodNotAllowed, "Method not allowed.")
+			return
+		}
+
+		if r.URL.Query().Get("state") == "" || r.URL.Query().Get("code") == "" {
+			s.errorPageWithStatus("The demo sign-in response was incomplete.", http.StatusBadRequest).ServeHTTP(w, r)
+			return
+		}
+
+		cookie, err := r.Cookie("relay_demo_verifier")
+		if err != nil || cookie.Value == "" || cookie.Value != r.URL.Query().Get("state") {
+			s.errorPageWithStatus("The demo sign-in session expired.", http.StatusGone).ServeHTTP(w, r)
+			return
+		}
+
+		form := url.Values{
+			"grant_type":    {"authorization_code"},
+			"code":          {r.URL.Query().Get("code")},
+			"redirect_uri":  {strings.TrimSuffix(cfg.Issuer, "/") + "/oidc/demo/callback"},
+			"client_id":     {demoOIDCClientID},
+			"client_secret": {"relayid-demo-client-secret"},
+			"code_verifier": {cookie.Value},
+		}
+		tokenRequest := httptest.NewRequest(http.MethodPost, "/oidc/token", strings.NewReader(form.Encode()))
+		tokenRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		tokenResponse := httptest.NewRecorder()
+		s.token(cfg).ServeHTTP(tokenResponse, tokenRequest)
+		if tokenResponse.Code != http.StatusOK {
+			s.errorPageWithStatus("The demo sign-in could not be completed.", http.StatusBadRequest).ServeHTTP(w, r)
+			return
+		}
+
+		var token struct {
+			AccessToken string `json:"access_token"`
+		}
+		if err := json.Unmarshal(tokenResponse.Body.Bytes(), &token); err != nil || token.AccessToken == "" {
+			s.errorPageWithStatus("The demo sign-in response was invalid.", http.StatusBadRequest).ServeHTTP(w, r)
+			return
+		}
+
+		userRequest := httptest.NewRequest(http.MethodGet, "/oidc/userinfo", nil)
+		userRequest.Header.Set("Authorization", "Bearer "+token.AccessToken)
+		userResponse := httptest.NewRecorder()
+		s.user(cfg).ServeHTTP(userResponse, userRequest)
+		if userResponse.Code != http.StatusOK {
+			s.errorPageWithStatus("The demo identity response was invalid.", http.StatusBadRequest).ServeHTTP(w, r)
+			return
+		}
+
+		http.SetCookie(w, &http.Cookie{Name: "relay_demo_verifier", Path: "/oidc", MaxAge: -1})
+		http.Redirect(w, r, "/oidc?verified=1", http.StatusSeeOther)
+	}
+}
+
+func (s *Store) demoOIDCReset(cfg Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			errOut(w, http.StatusMethodNotAllowed, "Method not allowed.")
+			return
+		}
+
+		s.testDemoMu.Lock()
+		loginID := s.testDemoLoginID
+		s.testDemoLoginID = ""
+		s.testDemoMu.Unlock()
+		if loginID != "" {
+			s.mu.Lock()
+			delete(s.loginState, loginID)
+			s.mu.Unlock()
+		}
+
+		http.Redirect(w, r, "/oidc", http.StatusSeeOther)
+	}
 }
 
 func (s *Store) loginEvents(cfg Config) http.Handler {
