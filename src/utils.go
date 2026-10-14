@@ -55,6 +55,8 @@ var b64 = base64.RawURLEncoding
 
 const mobileCodeAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
+const demoMobileCode = "1234-5678"
+
 func randomToken(n int) (string, error) {
 	x := make([]byte, n)
 	if _, err := rand.Read(x); err != nil {

@@ -9,7 +9,7 @@
     if (index >= codeGroups) input.hidden = true;
 
     input.addEventListener('input', () => {
-      input.value = input.value.toUpperCase().replace(/[^ABCDEFGHJKMNPQRSTUVWXYZ23456789]/g, '').slice(-4);
+      input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(-4);
       if (input.value.length === 4 && codeInputs[index + 1] && index + 1 < codeGroups) codeInputs[index + 1].focus();
     });
 
@@ -22,7 +22,7 @@
     input.addEventListener('paste', (event) => {
       event.preventDefault();
       const pasted = event.clipboardData?.getData('text') || '';
-      const clean = pasted.toUpperCase().replace(/[^ABCDEFGHJKMNPQRSTUVWXYZ23456789]/g, '');
+      const clean = pasted.toUpperCase().replace(/[^A-Z0-9]/g, '');
       codeInputs.forEach((group, groupIndex) => {
         group.value = groupIndex < codeGroups ? clean.slice(groupIndex * 4, groupIndex * 4 + 4) : '';
       });

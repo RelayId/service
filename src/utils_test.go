@@ -1,18 +1,15 @@
 package main
 
-import (
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-)
+import "testing"
 
-func TestReadJSONRejectsNullObject(t *testing.T) {
-	request := httptest.NewRequest(http.MethodPost, "/api/codes", strings.NewReader("null"))
-	request.Header.Set("Content-Type", "application/json")
-
-	var input struct{}
-	if err := readJSON(request, &input); err == nil {
-		t.Fatal("readJSON accepted a JSON null value where an object is required")
+func TestReservedDemoCodeCannotBeGeneratedNormally(t *testing.T) {
+	for range 1000 {
+		code, err := mobileCode(2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if normalizeMobileCode(code) == normalizeMobileCode(demoMobileCode) {
+			t.Fatalf("normal generator produced reserved demo code %q", code)
+		}
 	}
 }

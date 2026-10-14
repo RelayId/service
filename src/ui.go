@@ -313,20 +313,27 @@ func (s *Store) demoOIDCCallback(cfg Config) http.HandlerFunc {
 			return
 		}
 
-		if r.URL.Query().Get("state") == "" || r.URL.Query().Get("code") == "" {
+		query := r.URL.Query()
+		if query.Get("error") != "" {
+			message := oauthCallbackErrorMessage(query.Get("error"), query.Get("error_description"), "The demo sign-in was not completed.")
+			s.errorPageWithStatus(message, http.StatusBadRequest).ServeHTTP(w, r)
+			return
+		}
+
+		if query.Get("state") == "" || query.Get("code") == "" {
 			s.errorPageWithStatus("The demo sign-in response was incomplete.", http.StatusBadRequest).ServeHTTP(w, r)
 			return
 		}
 
 		cookie, err := r.Cookie("relay_demo_verifier")
-		if err != nil || cookie.Value == "" || cookie.Value != r.URL.Query().Get("state") {
+		if err != nil || cookie.Value == "" || cookie.Value != query.Get("state") {
 			s.errorPageWithStatus("The demo sign-in session expired.", http.StatusGone).ServeHTTP(w, r)
 			return
 		}
 
 		form := url.Values{
 			"grant_type":    {"authorization_code"},
-			"code":          {r.URL.Query().Get("code")},
+			"code":          {query.Get("code")},
 			"redirect_uri":  {strings.TrimSuffix(cfg.Issuer, "/") + "/oidc/demo/callback"},
 			"client_id":     {demoOIDCClientID},
 			"client_secret": {"relayid-demo-client-secret"},
@@ -377,6 +384,7 @@ func (s *Store) demoOIDCReset(cfg Config) http.HandlerFunc {
 		if loginID != "" {
 			s.mu.Lock()
 			delete(s.loginState, loginID)
+			delete(s.mobileCodes, normalizeMobileCode(demoMobileCode))
 			s.mu.Unlock()
 		}
 

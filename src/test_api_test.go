@@ -68,6 +68,9 @@ func TestDemoAppFlowUsesRealOIDCHandlers(t *testing.T) {
 	if err := json.NewDecoder(codeResponse.Body).Decode(&envelope); err != nil || envelope.Data.Code == "" {
 		t.Fatalf("invalid code response: %v", err)
 	}
+	if envelope.Data.Code != demoMobileCode {
+		t.Fatalf("demo code=%q, want reserved code %q", envelope.Data.Code, demoMobileCode)
+	}
 
 	form := url.Values{"code": {envelope.Data.Code}}
 	verify := httptest.NewRecorder()
@@ -92,7 +95,7 @@ func TestDemoAppFlowUsesRealOIDCHandlers(t *testing.T) {
 	}
 
 	login := httptest.NewRecorder()
-	handler.ServeHTTP(login, httptest.NewRequest(http.MethodGet, "/test/api/logins/test-login", nil))
+	handler.ServeHTTP(login, httptest.NewRequest(http.MethodGet, "/test/api/logins/"+strings.TrimPrefix(loginURL.Path, "/login/"), nil))
 	if login.Code != http.StatusOK || !strings.Contains(login.Body.String(), `"state":"completed"`) {
 		t.Fatalf("login response=%d body=%s", login.Code, login.Body.String())
 	}

@@ -49,6 +49,7 @@ type AuthCode struct {
 type MobileCode struct {
 	Value     string
 	Device    *Device
+	LoginID   string
 	CreatedAt time.Time
 	ExpiresAt time.Time
 }
@@ -131,7 +132,7 @@ func (s *Store) approveLoginWithMobileCode(id, code string, now time.Time) error
 	}
 
 	mobile := s.mobileCodes[code]
-	if mobile == nil || !now.Before(mobile.ExpiresAt) {
+	if mobile == nil || (mobile.LoginID != "" && mobile.LoginID != id) || !now.Before(mobile.ExpiresAt) {
 		login.MobileCodeAttempts++
 		if login.MobileCodeAttempts >= maxMobileCodeAttempts {
 			login.State = "expired"

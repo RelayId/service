@@ -203,7 +203,8 @@ func (s *Store) upstreamCallback(cfg Config, provider Provider, w http.ResponseW
 	}
 
 	if query.Get("error") != "" {
-		s.errorPageWithStatus("The identity-provider login was not approved.", http.StatusBadRequest).ServeHTTP(w, r)
+		message := oauthCallbackErrorMessage(query.Get("error"), query.Get("error_description"), "The identity-provider login was not approved.")
+		s.errorPageWithStatus(message, http.StatusBadRequest).ServeHTTP(w, r)
 		return
 	}
 
