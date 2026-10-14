@@ -183,7 +183,7 @@ func (s *Store) testPages(cfg Config) http.Handler {
 
 			message := "Continue with a configured identity provider to verify the account, then return to the app."
 			if state == "verified" {
-				message = "Identity verified. Your Relay app is completing enrollment.."
+				message = "Identity verified. Your Relay app is completing enrollment."
 			}
 			if state == "complete" {
 				message = "Your Relay app finished enrollment successfully."

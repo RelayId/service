@@ -28,8 +28,8 @@
     }
 
     if (value === 'verified') {
-      if (note) note.textContent = 'Waiting for the Relay app to finish enrollment..';
-      if (message) message.textContent = 'Identity verified. Your Relay app is completing enrollment..';
+      if (note) note.textContent = 'Waiting for the Relay app to finish enrollment.';
+      if (message) message.textContent = 'Identity verified. Your Relay app is completing enrollment.';
     }
 
     if (value === 'expired') {
